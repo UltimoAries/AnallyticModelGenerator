@@ -1,4 +1,14 @@
-torch~=2.6.0+cu118
+# Core dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.0.0
+opencv-python>=4.7.0
+pyyaml>=6.0.0
+numpy>=1.23.0
 
-PyYAML~=6.0
-ultralytics~=8.3.73
+# PyQt5 for the GUI
+PyQt5>=5.15.0
+
+# Additional utilities
+shutil>=1.0.0
+argparse>=1.4.0
