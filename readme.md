@@ -6,7 +6,7 @@
 
 <!-- Add a project logo or screenshot here if you have one (optional) -->
 <!-- ![Project Logo](path/to/your/logo.png) -->
-[Screenshot of the Annotation Tool UI](![image](https://github.com/user-attachments/assets/d7cb4c80-9373-438a-a293-1fdcda3f679a) <!-- Replace with a link to a screenshot of your UI -->
+Screenshot of the Annotation Tool UI(![image](https://github.com/user-attachments/assets/d7cb4c80-9373-438a-a293-1fdcda3f679a) <!-- Replace with a link to a screenshot of your UI -->
 
 ---
 
