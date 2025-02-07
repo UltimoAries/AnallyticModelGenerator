@@ -6,6 +6,7 @@ from ultralytics import YOLO
 
 
 def main():
+
     # --- GPU/CPU CHECK ---
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
