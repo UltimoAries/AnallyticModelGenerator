@@ -1,0 +1,8 @@
+# PyTorch (choose a version compatible with your GPU drivers and CUDA setup)
+torch==2.0.1
+
+# YOLOv8 (ultralytics package)
+ultralytics==8.0.65
+
+# PyYAML for loading the YAML config
+PyYAML==6.0
