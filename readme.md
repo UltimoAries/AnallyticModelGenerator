@@ -6,10 +6,11 @@
 
 <!-- Add a project logo or screenshot here if you have one (optional) -->
 <!-- ![Project Logo](path/to/your/logo.png) -->
-![Screenshot of the Annotation Tool UI](link-to-screenshot-image-replace-this-with-actual-link.png) <!-- Replace with a link to a screenshot of your UI -->
+![Screenshot of the Annotation Tool UI](github.com/user-attachments/assets/d7cb4c80-9373-438a-a293-1fdcda3f679a) <!-- Replace with a link to a screenshot of your UI -->
 
 ---
-![image](https://github.com/user-attachments/assets/2d60311d-0cdd-473e-9eae-0a468a09ebcb)
+![image](https://github.com/user-attachments/assets/d7cb4c80-9373-438a-a293-1fdcda3f679a)
+
 
 ## Project Overview
 
