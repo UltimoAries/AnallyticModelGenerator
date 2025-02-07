@@ -1,10 +1,15 @@
 # AnalyticModelGenerator - GUI Image Annotation and YOLOv8 Training Tool
 
 ---
-![Screenshot of the Annotation Tool UI](![image](https://github.com/user-attachments/assets/9a0a3842-7652-4384-97a0-c4874bf7b2eb)
-) <!-- Replace with a link to a screenshot of your UI -->
+
+[![Project Status](https://img.shields.io/badge/Status-In%20Development-yellow)](https://github.com/UltimoAries/AnalyticModelGenerator)  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Replace with your chosen license badge if different -->
+
+<!-- Add a project logo or screenshot here if you have one (optional) -->
+<!-- ![Project Logo](path/to/your/logo.png) -->
+![Screenshot of the Annotation Tool UI](link-to-screenshot-image-replace-this-with-actual-link.png) <!-- Replace with a link to a screenshot of your UI -->
 
 ---
+![image](https://github.com/user-attachments/assets/2d60311d-0cdd-473e-9eae-0a468a09ebcb)
 
 ## Project Overview
 
