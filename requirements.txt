@@ -1,8 +1,0 @@
-# PyTorch
-torch
-
-# YOLOv8 (ultralytics package)
-ultralytics
-
-# PyYAML for loading the YAML config
-PyYAML
