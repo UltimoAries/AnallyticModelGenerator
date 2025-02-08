@@ -1,4 +1,3 @@
-#Main
 import sys
 import os
 import cv2
@@ -38,7 +37,7 @@ class MainWindow(QWidget):
         self.tab_widget.addTab(self.settings_tab, "Settings")
 
         # --- Placeholder Labels for New Tabs ---
-        training_placeholder_label = QLabel("<h2>Training Data Setup will go here</h2>",
+        training_placeholder_label = QLabel("<h2>Training Data and Configuration</h2>",
                                             self.training_tab)
         training_placeholder_label.setAlignment(Qt.AlignCenter)
         self.training_tab_main_layout = QVBoxLayout(self.training_tab)  # Main layout for Training Tab
@@ -837,7 +836,7 @@ class MainWindow(QWidget):
         self.start_training_button.setEnabled(True)
 
     def start_training(self):
-        """Starts the YOLOv8 training process in a separate thread/process."""
+        """Starts the YOLOv8 training process in a separate QProcess."""
         export_dir = self.export_dir_edit.text()
         if not export_dir:
             QMessageBox.warning(self, "Warning", "Please select an export directory first.")
@@ -846,31 +845,46 @@ class MainWindow(QWidget):
         train_config_path = os.path.join(export_dir, "train_config.yaml")
         if not os.path.exists(train_config_path):
             QMessageBox.critical(self, "Error",
-                                 f"train_config.yaml not found in export directory: {export_dir}. Please export the dataset first.")
+                                 f"train_config.yaml not found in export directory: {export_dir}.\n"
+                                 "Please export the dataset first.")
             return
 
         # Disable Start Training button
         self.start_training_button.setEnabled(False)
         QApplication.processEvents()
 
-        # Start training in a separate process
-        self.process = QProcess()
+        # ----- Create QProcess -----
+        self.process = QProcess(self)
+
+        # (Optional) Merge stdout+stderr into a single channel if you prefer
+        self.process.setProcessChannelMode(QProcess.MergedChannels)
+
+        # Connect signals BEFORE starting the process
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
         self.process.readyReadStandardError.connect(self.handle_stderr)
         self.process.finished.connect(self.training_finished)
+        self.process.errorOccurred.connect(self.on_process_error)
 
-        command = [".venv\\Scripts\\python.exe", "train_script.py", "--config", train_config_path] # Explicit path to venv python (adjust if needed)
+        # ---- Build the command ----
+        # Use sys.executable to ensure we use the same Python as the GUI
+        # Use "-u" for unbuffered output so QProcess receives logs immediately.
+        train_script_fullpath = os.path.join(os.path.dirname(__file__), "train_script.py")
+        command = [
+            sys.executable,
+            "-u",
+            train_script_fullpath,
+            "--config",
+            train_config_path
+        ]
 
-        # --- Set Working Directory and Environment ---
-        working_directory = os.path.dirname(os.path.abspath(__file__)) # Project script's directory as working dir
-        env = QProcessEnvironment.systemEnvironment() # Get system env
-        env.insert("PYTHONPATH", ".;.venv\\Lib\\site-packages") # Explicitly add venv site-packages to PYTHONPATH (might be needed)
-        self.process.setWorkingDirectory(working_directory) # Set working directory
-        self.process.setProcessEnvironment(env) # Set environment for process
+        # Debug line to show we're about to start the process
+        self.training_console.append("Starting training process...")
 
+        # Start the process
         self.process.start(command[0], command[1:])
 
-        QMessageBox.information(self, "Info", "Training started in background. Check console for output.")
+        # Another debug line
+        self.training_console.append("Process started...waiting for output...")
 
 
     def execute_training(self, config_path): # Not directly used anymore, using subprocess instead
@@ -916,22 +930,31 @@ class MainWindow(QWidget):
 
 
     def handle_stdout(self):
-        """Handles standard output from the training process and redirects to QTextEdit."""
-        stdout = self.process.readAllStandardOutput().data().decode()
-        self.training_console.append(stdout) # Append stdout to QTextEdit
-
+        """Handles standard output from the training process and appends to QTextEdit."""
+        # If MergedChannels is set, both stdout and stderr come here
+        output = self.process.readAllStandardOutput().data().decode()
+        self.training_console.append(output)
 
     def handle_stderr(self):
-        """Handles standard error output from the training process and redirects to QTextEdit."""
-        stderr = self.process.readAllStandardError().data().decode()
-        self.training_console.append(f"<span style='color:red;'>{stderr}</span>") # Append stderr in red color to QTextEdit
-
+        """Handles standard error from the training process and appends to QTextEdit."""
+        # Only called if you're NOT merging channels
+        error_output = self.process.readAllStandardError().data().decode()
+        # Append in red or just plain text
+        self.training_console.append(f"<span style='color:red;'>{error_output}</span>")
 
     def training_finished(self):
-        """Handles the completion of the training process."""
-        self.start_training_button.setEnabled(True) # Re-enable button
+        """Called when the training process finishes."""
+        self.start_training_button.setEnabled(True)
+        self.training_console.append("Training process finished.")
         QMessageBox.information(self, "Info", "Training process finished. Check console and 'runs' folder.")
-        self.process = None # Clean up process reference
+        self.process = None  # Clean up reference
+
+    def on_process_error(self, error):
+        """Called if QProcess fails to start or hits a critical error."""
+        self.training_console.append(f"<span style='color:red;'>Process error occurred: {error}</span>")
+        # Re-enable the button in case of error
+        self.start_training_button.setEnabled(True)
+        self.process = None
 
 
     def save_annotation_to_path(self, image_path, label_file_path, boxes):

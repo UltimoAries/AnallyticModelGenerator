@@ -1,7 +1,5 @@
-PyQt5>=5.15
-opencv-python>=4.5
-PyYAML>=6.0
-ultralytics>=8.0
-torch>=2.0.0
-torchvision>=0.15.0
-torchaudio>=2.0.0
+PyQt5==5.15.11
+PyYAML==6.0
+opencv-python
+torch
+ultralytics
