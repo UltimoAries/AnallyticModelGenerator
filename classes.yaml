@@ -1,0 +1,16 @@
+classes:
+  Quarter:
+    color:
+    - 12
+    - 255
+    - 12
+  Dime:
+    color:
+    - 255
+    - 0
+    - 0
+  Nickle:
+    color:
+    - 48
+    - 12
+    - 255
