@@ -924,7 +924,7 @@ class MainWindow(QWidget):
             QMessageBox.information(self, "Success", "Training completed successfully! Check console for details and 'runs' folder for results.")
 
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Training failed: {e}")
+            QMessageBox.critical(self, "Error", f"Training failed!: {e}")
         finally:
             self.start_training_button.setEnabled(True) # Re-enable button after training or error
 

@@ -80,7 +80,7 @@ def main(config_path):
             else:
                 print("best.pt not found! Check if training completed successfully.", flush=True)
 
-        print("Training completed successfully.", flush=True)
+        print("Training completed successfully!", flush=True)
 
     except Exception as e:
         # Print errors so they appear in your PyQt console
