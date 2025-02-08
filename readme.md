@@ -163,7 +163,7 @@ The `train_script.py` file contains the core YOLOv8 training logic using the `ul
 
 ---
 
-## Contributing (Optional)
+## Contributing 
 
 <!-- If you are open to contributions, add guidelines here -->
 <!--
@@ -179,7 +179,8 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 
 ---
 
-## Acknowledgments (Optional)
+## Acknowledgments
+Your mother
 
 <!-- If you want to acknowledge any libraries, resources, or people, list them here -->
 <!--
@@ -191,8 +192,8 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 
 ---
 
-## Future Features (Optional - if you want to mention planned features)
-
+## Future Features
+Ability to test and view created analytic models on both pictures and videos
 <!-- List any planned future features or improvements here -->
 <!--
 * Implementation of the "Testing" tab for model evaluation.
@@ -202,12 +203,3 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 -->
 
 ---
-
-**This `README.md` is a starting point. Please customize it further with:**
-
-*   **More details about *your specific tool* and its unique aspects.**
-*   **Clearer and more detailed instructions if needed.**
-*   **High-quality screenshots and potentially a demo GIF or video to make it visually appealing.**
-*   **Your chosen license information in the `LICENSE` file and README badge.**
-
-Let me know if you'd like me to refine any specific section or add more details!
