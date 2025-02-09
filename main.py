@@ -5,6 +5,7 @@ from annotation_tab import AnnotationTab
 from settings_tab import SettingsTab
 from training_tab import TrainingTab
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()

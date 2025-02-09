@@ -4,151 +4,99 @@ import yaml
 
 from PyQt5.QtWidgets import (
     QWidget, QPushButton, QVBoxLayout, QLabel, QFileDialog,
-    QHBoxLayout, QSlider, QComboBox, QMessageBox, QShortcut,
+    QHBoxLayout, QComboBox, QMessageBox, QShortcut,
     QDialog, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem,
     QGraphicsPixmapItem, QGraphicsView
 )
 from PyQt5.QtGui import (
-    QPixmap, QImage, QPen, QColor, QCursor, QKeySequence, QBrush
+    QPixmap, QImage, QPen, QColor, QCursor, QKeySequence, QBrush, QFont
 )
-from PyQt5.QtCore import Qt, QRectF, QPointF
+from PyQt5.QtCore import Qt, QRectF
 
 from class_editor import ClassEditorDialog, InputDialog
-from PyQt5.QtWidgets import QGraphicsRectItem, QGraphicsTextItem
-from PyQt5.QtGui import QPen, QBrush, QColor, QFont
-from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtWidgets import QGraphicsView
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QTransform
 
 
 class BoundingBoxItem(QGraphicsRectItem):
     """
     A custom QGraphicsRectItem subclass that displays a rectangular bounding box
-    plus a text label for the associated class name. Used for drawing annotations.
-
-    Things you might want to edit/adjust in the future:
-      - The alpha (transparency) of the fill brush
-      - The outline thickness or color
-      - The default font size and color for the label
-      - The logic in itemChange if you want bounding boxes to do more on move/resize
-      - The label placement if you want it centered or offset
+    plus a text label for the associated class name.
     """
     def __init__(self, rect, class_name, color, annotation_tab=None):
-        """
-        :param rect:       A QRectF indicating the initial position/size of this box.
-        :param class_name: A string name for the bounding box class (e.g. "Person").
-        :param color:      A QColor or similar indicating the box color.
-        :param annotation_tab: (Optional) reference back to the AnnotationTab or parent.
-                              Helps if you need to notify it when boxes move or get deleted.
-        """
         super().__init__(rect)
-
         self.class_name = class_name
         self.color = color
-        self.annotation_tab = annotation_tab  # If needed, for callbacks or data updates
+        self.annotation_tab = annotation_tab
 
-        # 1) Configure bounding-box appearance
-        #    - The outline is drawn with a QPen. Here, 2 px wide.
+        # Configure appearance
         self.setPen(QPen(self.color, 2))
-
-        #    - The fill uses a brush with semi-transparency (alpha=80).
-        #      Increase alpha to make it more opaque, decrease for more see-through.
         self.setBrush(QBrush(QColor(self.color.red(),
                                     self.color.green(),
                                     self.color.blue(),
-                                    80)))  # Adjust '80' to your liking (0..255)
-
-        # 2) Make the item selectable, movable, and track changes.
+                                    80)))
         self.setFlag(QGraphicsRectItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsRectItem.ItemIsMovable, True)
         self.setFlag(QGraphicsRectItem.ItemSendsGeometryChanges, True)
 
-        # 3) Add a text label to show the class name
-        #    - QGraphicsTextItem is a child of this rect item, so it moves with us
+        # Add a text label
         self.label_text = QGraphicsTextItem(self.class_name, self)
-
-        #    - Set a font if you want it bigger or bolder
         font = QFont("Arial", 20, QFont.Bold)
         self.label_text.setFont(font)
-
-        #    - The default text color is white; change if your fill is too light
         self.label_text.setDefaultTextColor(Qt.white)
-
-        #    - Position it at the top-left corner of the bounding box
         self.label_text.setPos(rect.topLeft())
 
     def itemChange(self, change, value):
-        """
-        Called whenever the item moves, is reparented, or changes geometry.
-        If you need to notify your annotation_tab or do something special
-        when the box is moved, you can do it here.
-        """
         if change == QGraphicsRectItem.ItemPositionChange:
-            # This event fires when the user drags/moves the box
             new_rect = self.rect().translated(value - self.pos())
-            # Move the label to match our new top-left
             self.label_text.setPos(new_rect.topLeft())
-
         elif change == QGraphicsRectItem.ItemPositionHasChanged:
-            # After the box has finished moving, you could call back to the parent
-            # e.g. self.annotation_tab.update_image_info() if you want live updates.
             if self.annotation_tab:
                 self.annotation_tab.update_image_info()
-
-        # If the item is removed from the scene, you can remove it from the parent's data
-        # For example, if change == QGraphicsRectItem.ItemSceneChange and value is None:
-        #    # The item is being removed from the scene
-        #    if self.annotation_tab:
-        #       # Purge from self.annotation_tab.image_boxes, etc.
-
         return super().itemChange(change, value)
 
     def setRect(self, rect):
-        """
-        Override setRect to keep the label pinned to the top-left corner.
-        Called whenever you change the bounding rectangle (like while drawing).
-        """
         super().setRect(rect)
         self.label_text.setPos(self.rect().topLeft())
 
 
 class CustomGraphicsView(QGraphicsView):
-    """
-    A subclass of QGraphicsView that handles:
-      - Left-click-drag for drawing bounding boxes,
-      - Middle-click-drag for panning (wheel click),
-      - Cursor is a crosshair by default, changes to closed-hand while panning,
-      - No extra guide lines on the screen.
-    """
-
     def __init__(self, annotation_tab, parent=None):
         super().__init__(parent)
         self.annotation_tab = annotation_tab
         self.setDragMode(QGraphicsView.NoDrag)
-        # By default, show a crosshair
         self.setCursor(Qt.CrossCursor)
 
-        # Track bounding-box drawing
+        # Set the transformation anchor so that zooming is under the mouse.
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+
+        # For mouse wheel zooming (absolute zoom)
+        self.current_zoom = 100  # Zoom percentage
+
+        # For right-click panning: store the start point (if panning)
+        self._pan_start = None
+
+        # Variables for left-click drawing (unchanged)
         self.drawing = False
         self.start_point = None
         self.current_rect_item = None
 
     def mousePressEvent(self, event):
-        # MIDDLE button => panning
-        if event.button() == Qt.MiddleButton:
-            self.setDragMode(QGraphicsView.ScrollHandDrag)
-            self.setCursor(Qt.ClosedHandCursor)   # closed-hand while panning
-            self.setInteractive(False)
-            super().mousePressEvent(event)
+        if event.button() == Qt.RightButton:
+            # Begin panning: record the starting mouse position.
+            self._pan_start = event.pos()
+            # Change the cursor to indicate panning.
+            self.setCursor(Qt.ClosedHandCursor)
+            event.accept()
             return
 
-        # LEFT button => draw bounding box if a class is selected
         if event.button() == Qt.LeftButton and self.annotation_tab.current_class:
+            # Start drawing a bounding box.
             self.drawing = True
             self.start_point = self.mapToScene(event.pos())
-
-            # Import your bounding-box item class if needed:
-            from annotation_tab import BoundingBoxItem
             color = self.annotation_tab.classes[self.annotation_tab.current_class]
-
+            from annotation_tab import BoundingBoxItem  # if needed
             rect_item = BoundingBoxItem(
                 QRectF(self.start_point, self.start_point),
                 self.annotation_tab.current_class,
@@ -157,53 +105,82 @@ class CustomGraphicsView(QGraphicsView):
             )
             self.annotation_tab.scene.addItem(rect_item)
             self.current_rect_item = rect_item
+            event.accept()
             return
 
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # If we're drawing a box, update its rectangle
+        # Handle panning if right button is held.
+        if self._pan_start is not None:
+            # Calculate the difference between the current and the starting mouse position.
+            delta = event.pos() - self._pan_start
+            self._pan_start = event.pos()  # update the starting point for the next move
+
+            # Adjust the scroll bars by the negative delta so that the view pans accordingly.
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            event.accept()
+            return
+
+        # Handle drawing if left button is active.
         if self.drawing and self.current_rect_item:
             current_point = self.mapToScene(event.pos())
             rect = QRectF(self.start_point, current_point).normalized()
             self.current_rect_item.setRect(rect)
+            event.accept()
             return
 
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        # If panning with middle button
-        if event.button() == Qt.MiddleButton:
-            # Go back to crosshair cursor
+        # End panning on right mouse release.
+        if event.button() == Qt.RightButton and self._pan_start is not None:
+            self._pan_start = None
+            # Restore the cursor to the cross cursor (or any default you prefer).
             self.setCursor(Qt.CrossCursor)
-            self.setDragMode(QGraphicsView.NoDrag)
-            self.setInteractive(True)
-            super().mouseReleaseEvent(event)
+            event.accept()
             return
 
-        # If drawing a bounding box with left button
+        # End drawing on left mouse release.
         if event.button() == Qt.LeftButton and self.drawing:
             self.drawing = False
             end_point = self.mapToScene(event.pos())
             rect = QRectF(self.start_point, end_point).normalized()
 
-            # If the box is tiny, remove it
             if rect.width() < 5 or rect.height() < 5:
                 if self.current_rect_item:
                     self.annotation_tab.scene.removeItem(self.current_rect_item)
             else:
-                # Store it in annotation_tab’s data structure
                 image_path = self.annotation_tab.image_paths[self.annotation_tab.current_image_index]
                 if image_path not in self.annotation_tab.image_boxes:
                     self.annotation_tab.image_boxes[image_path] = []
                 self.annotation_tab.image_boxes[image_path].append(
                     (rect, self.annotation_tab.current_class)
                 )
-
             self.current_rect_item = None
+            event.accept()
             return
 
         super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event):
+        # Only mouse wheel zooming is enabled (absolute zoom).
+        zoom_step = 10  # zoom percentage step per notch
+
+        if event.angleDelta().y() > 0:
+            self.current_zoom += zoom_step
+        else:
+            self.current_zoom -= zoom_step
+
+        # Clamp the zoom level between 10% and 400%.
+        self.current_zoom = max(10, min(self.current_zoom, 400))
+        factor = self.current_zoom / 100.0
+
+        # Reset and apply the new transform.
+        self.setTransform(QTransform().scale(factor, factor))
+        event.accept()
+
 
 class AnnotationTab(QWidget):
     def __init__(self):
@@ -223,11 +200,12 @@ class AnnotationTab(QWidget):
 
         self.image_info_label = QLabel("No folder loaded", self)
 
-        self.zoom_slider = QSlider(Qt.Horizontal, self)
-        self.zoom_slider.setRange(1, 400)
-        self.zoom_slider.setValue(100)
-        self.zoom_slider.valueChanged.connect(self.update_zoom_slider)
-        self.zoom_label = QLabel("Zoom: 100%", self)
+        # -- Zooming UI elements have been removed --
+        # self.zoom_slider = QSlider(Qt.Horizontal, self)
+        # self.zoom_slider.setRange(1, 400)
+        # self.zoom_slider.setValue(100)
+        # self.zoom_slider.valueChanged.connect(self.update_zoom_slider)
+        # self.zoom_label = QLabel("Zoom: 100%", self)
 
         self.edit_classes_button = QPushButton("Edit Classes", self)
         self.edit_classes_button.clicked.connect(self.open_class_editor)
@@ -256,10 +234,11 @@ class AnnotationTab(QWidget):
         nav_hbox.addWidget(self.prev_button)
         nav_hbox.addWidget(self.next_button)
 
-        zoom_hbox = QHBoxLayout()
-        zoom_hbox.addWidget(QLabel("Zoom:"))
-        zoom_hbox.addWidget(self.zoom_slider)
-        zoom_hbox.addWidget(self.zoom_label)
+        # -- Zoom layout removed --
+        # zoom_hbox = QHBoxLayout()
+        # zoom_hbox.addWidget(QLabel("Zoom:"))
+        # zoom_hbox.addWidget(self.zoom_slider)
+        # zoom_hbox.addWidget(self.zoom_label)
 
         class_hbox = QHBoxLayout()
         class_hbox.addWidget(QLabel("Class:"))
@@ -270,19 +249,19 @@ class AnnotationTab(QWidget):
         main_layout.addLayout(top_hbox)
         main_layout.addLayout(nav_hbox)
 
-        # Instead of a normal QGraphicsView, we use our custom subclass
+        # Set up the graphics scene and view
         self.scene = QGraphicsScene(self)
-        self.image_view = CustomGraphicsView(annotation_tab=self)  # pass self so it can call back
+        self.image_view = CustomGraphicsView(annotation_tab=self)
         self.image_view.setScene(self.scene)
 
         main_layout.addWidget(self.image_view)
-        main_layout.addLayout(zoom_hbox)
+        # main_layout.addLayout(zoom_hbox)  <-- Removed zoom layout
         main_layout.addWidget(self.edit_classes_button)
         main_layout.addLayout(class_hbox)
         main_layout.addWidget(self.save_button)
         main_layout.addWidget(self.save_all_button)
 
-        # Data
+        # Data storage
         self.image_paths = []
         self.current_image_index = -1
         self.classes = {}
@@ -298,9 +277,10 @@ class AnnotationTab(QWidget):
         self.delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), self)
         self.delete_shortcut.activated.connect(self.delete_selected_box)
 
-        # Load classes, settings
+        # Load settings and classes
         self.load_classes()
         self.load_settings()
+        self.populate_class_combo()
         self.update_color_preview()
 
     # ---------------- FOLDER / IMAGE LOADING -----------------
@@ -349,12 +329,16 @@ class AnnotationTab(QWidget):
                 self.pixmap_item = QGraphicsPixmapItem(pixmap)
                 self.scene.addItem(self.pixmap_item)
 
-                # scene rect
+                # Set scene rect
                 self.scene.setSceneRect(QRectF(pixmap.rect()))
 
-                # Fit in view
+                # Fit the image in view
                 self.image_view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
                 self.image_view.viewport().setCursor(QCursor(Qt.CrossCursor))
+
+                # **Update current_zoom based on the applied fitInView transform**
+                # Assuming uniform scaling, m11() gives the horizontal scale factor.
+                self.image_view.current_zoom = self.image_view.transform().m11() * 100
 
                 self.load_annotations()
 
@@ -395,46 +379,19 @@ class AnnotationTab(QWidget):
         else:
             self.image_info_label.setText("No folder loaded")
 
-    # ---------------- ZOOMING -----------------
-
-    def update_zoom_slider(self):
-        zoom_level = self.zoom_slider.value()
-        self.zoom_label.setText(f"Zoom: {zoom_level}%")
-        self.image_view.resetTransform()
-        factor = zoom_level / 100.0
-        self.image_view.scale(factor, factor)
-
-    def wheelEvent(self, event):
-        if event.modifiers() == Qt.ControlModifier:
-            zoom_factor = 1.15
-            if event.angleDelta().y() > 0:
-                self.image_view.scale(zoom_factor, zoom_factor)
-            else:
-                self.image_view.scale(1 / zoom_factor, 1 / zoom_factor)
-            self.update_zoom_from_view()
-            event.accept()
-        else:
-            super().wheelEvent(event)
-
-    def update_zoom_from_view(self):
-        transform = self.image_view.transform()
-        current_scale = transform.m11()
-        zoom_percentage = int(current_scale * 100)
-        self.zoom_slider.setValue(zoom_percentage)
-        self.zoom_label.setText(f"Zoom: {zoom_percentage}%")
-
     # ---------------- BOUNDING BOX ANNOTATIONS -----------------
 
     def load_annotations(self):
         if not self.image_paths or not self.pixmap_item:
             return
-        # remove any existing boxes from scene
-        for it in self.scene.items():
-            if isinstance(it, BoundingBoxItem):
-                self.scene.removeItem(it)
+
+        # Remove existing bounding boxes from the scene
+        for item in self.scene.items():
+            if isinstance(item, BoundingBoxItem):
+                self.scene.removeItem(item)
 
         image_path = self.image_paths[self.current_image_index]
-        self.image_boxes[image_path] = []  # reset in memory
+        self.image_boxes[image_path] = []
 
         label_path = os.path.join(
             os.path.dirname(image_path),
@@ -500,14 +457,13 @@ class AnnotationTab(QWidget):
         if self.current_image_index < 0:
             return
         image_path = self.image_paths[self.current_image_index]
-        for it in self.scene.selectedItems():
-            if isinstance(it, BoundingBoxItem):
-                # remove from data
+        for item in self.scene.selectedItems():
+            if isinstance(item, BoundingBoxItem):
                 for bd in self.image_boxes[image_path]:
-                    if bd[0] == it.rect():
+                    if bd[0] == item.rect():
                         self.image_boxes[image_path].remove(bd)
                         break
-                self.scene.removeItem(it)
+                self.scene.removeItem(item)
 
     # ---------------- CLASSES / SETTINGS -----------------
 
@@ -544,8 +500,6 @@ class AnnotationTab(QWidget):
         except yaml.YAMLError as e:
             print(f"YAML error: {e}")
             self.classes = {"Default": QColor(255, 0, 0)}
-
-        self.populate_class_combo()
 
     def save_classes(self):
         try:
